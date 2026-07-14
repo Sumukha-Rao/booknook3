@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Margin Notes — Bookstore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#151d1a; --paper:#f6f3ec; --rule:#d8d2c4;
+    --muted:#6b7069; --brass:#b8842c; --card:#fffdf8;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--paper);color:var(--ink);font-family:Inter,system-ui,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+
+  header{border-bottom:1px solid var(--rule);padding:28px 0 20px}
+  .masthead{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  h1{font-family:'Instrument Serif',Georgia,serif;font-size:38px;font-weight:400;letter-spacing:-.01em}
+  h1 em{font-style:italic;color:var(--brass)}
+  .tag{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+
+  .controls{display:flex;gap:10px;flex-wrap:wrap;padding:22px 0}
+  input[type=search],select{font:inherit;padding:9px 12px;border:1px solid var(--rule);background:var(--card);border-radius:2px;color:var(--ink)}
+  input[type=search]{flex:1;min-width:200px}
+  input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--brass);outline-offset:2px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;padding-bottom:56px}
+  .book{background:var(--card);border:1px solid var(--rule);border-radius:2px;display:flex;flex-direction:column;overflow:hidden}
+  .spine{height:110px;position:relative;display:flex;align-items:flex-end;padding:14px}
+  .spine::after{content:'';position:absolute;left:0;top:0;bottom:0;width:8px;background:rgba(0,0,0,.22)}
+  .spine span{font-family:'Instrument Serif',serif;font-size:19px;color:#fff;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+  .body{padding:14px;display:flex;flex-direction:column;gap:8px;flex:1}
+  .author{font-size:13px;color:var(--muted)}
+  .desc{font-size:13px;color:var(--muted);flex:1}
+  .genre{display:inline-block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--brass);border:1px solid var(--brass);padding:2px 6px;border-radius:2px;align-self:flex-start}
+  .foot{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--rule);padding-top:10px;margin-top:2px}
+  .price{font-family:'Instrument Serif',serif;font-size:22px}
+  .stock{font-size:12px;color:var(--muted)}
+  .out{color:#a33}
+
+  button{font:inherit;font-size:13px;padding:7px 14px;border:1px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:2px;cursor:pointer}
+  button:hover{background:var(--brass);border-color:var(--brass)}
+  button:disabled{background:transparent;color:var(--muted);border-color:var(--rule);cursor:not-allowed}
+
+  dialog{border:1px solid var(--ink);border-radius:2px;padding:0;background:var(--card);max-width:400px;width:92%}
+  dialog::backdrop{background:rgba(21,29,26,.55)}
+  .dlg{padding:24px;display:flex;flex-direction:column;gap:12px}
+  .dlg h2{font-family:'Instrument Serif',serif;font-weight:400;font-size:24px}
+  .dlg input{font:inherit;padding:9px 12px;border:1px solid var(--rule);border-radius:2px;background:var(--paper);width:100%}
+  .row{display:flex;gap:10px;justify-content:flex-end}
+  .ghost{background:transparent;color:var(--ink)}
+  .msg{font-size:13px;min-height:18px}
+  .msg.err{color:#a33} .msg.ok{color:#2c6b4f}
+
+  footer{border-top:1px solid var(--rule);padding:16px 0 40px;font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  code{font-family:ui-monospace,monospace;background:rgba(0,0,0,.05);padding:1px 5px;border-radius:2px}
+  .empty{padding:60px 0;text-align:center;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap masthead">
+    <h1>Margin <em>Notes</em></h1>
+    <span class="tag">Independent booksellers</span>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="controls">
+    <input type="search" id="search" placeholder="Search by title or author" aria-label="Search books">
+    <select id="genre" aria-label="Filter by genre"><option value="">All genres</option></select>
+  </div>
+  <div class="grid" id="grid"></div>
+</main>
+
+<footer class="wrap">
+  <span>Served by EC2 instance <code id="instance">…</code> — refresh to see the load balancer switch</span>
+  <span id="count"></span>
+</footer>
+
+<dialog id="orderDlg">
+  <form class="dlg" method="dialog" id="orderForm">
+    <h2 id="dlgTitle">Order</h2>
+    <input id="cname" placeholder="Your name" required>
+    <input id="cemail" type="email" placeholder="Email address" required>
+    <input id="cqty" type="number" min="1" value="1" required>
+    <p class="msg" id="dlgMsg"></p>
+    <div class="row">
+      <button type="button" class="ghost" id="cancelBtn">Cancel</button>
+      <button type="button" id="confirmBtn">Place order</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+// ── CHANGE THIS to your ALB DNS name after you create the load balancer ──
+const API = 'http://bookstore-alb-123456789.ap-south-1.elb.amazonaws.com';
+
+const grid = document.getElementById('grid');
+const dlg = document.getElementById('orderDlg');
+let books = [], current = null;
+
+async function load() {
+  grid.innerHTML = '<p class="empty">Loading the shelves…</p>';
+  try {
+    const q = document.getElementById('search').value.trim();
+    const g = document.getElementById('genre').value;
+    const url = new URL(API + '/api/books');
+    if (q) url.searchParams.set('q', q);
+    if (g) url.searchParams.set('genre', g);
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('API returned ' + res.status);
+    books = await res.json();
+    render();
+  } catch (err) {
+    grid.innerHTML = '<p class="empty">Could not reach the API at <code>' + API + '</code>.<br>Check the ALB DNS name and that the target group is healthy.</p>';
+  }
+}
+
+function render() {
+  document.getElementById('count').textContent = books.length + ' titles in stock';
+  if (!books.length) { grid.innerHTML = '<p class="empty">No books match that search.</p>'; return; }
+  grid.innerHTML = books.map(b => `
+    <article class="book">
+      <div class="spine" style="background:${b.cover_color}"><span>${esc(b.title)}</span></div>
+      <div class="body">
+        <span class="genre">${esc(b.genre)}</span>
+        <p class="author">${esc(b.author)}</p>
+        <p class="desc">${esc(b.description || '')}</p>
+        <div class="foot">
+          <div>
+            <div class="price">₹${Number(b.price).toFixed(0)}</div>
+            <div class="stock ${b.stock ? '' : 'out'}">${b.stock ? b.stock + ' in stock' : 'Out of stock'}</div>
+          </div>
+          <button ${b.stock ? '' : 'disabled'} onclick="openOrder(${b.id})">${b.stock ? 'Order' : 'Sold out'}</button>
+        </div>
+      </div>
+    </article>`).join('');
+}
+
+function openOrder(id) {
+  current = books.find(b => b.id === id);
+  document.getElementById('dlgTitle').textContent = current.title;
+  document.getElementById('cqty').max = current.stock;
+  document.getElementById('dlgMsg').textContent = '';
+  document.getElementById('dlgMsg').className = 'msg';
+  dlg.showModal();
+}
+
+document.getElementById('cancelBtn').onclick = () => dlg.close();
+
+document.getElementById('confirmBtn').onclick = async () => {
+  const msg = document.getElementById('dlgMsg');
+  const name = document.getElementById('cname').value.trim();
+  const email = document.getElementById('cemail').value.trim();
+  const qty = document.getElementById('cqty').value;
+  if (!name || !email) { msg.textContent = 'Enter your name and email to continue.'; msg.className = 'msg err'; return; }
+  try {
+    const res = await fetch(API + '/api/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ book_id: current.id, customer: name, email, quantity: qty })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    msg.textContent = `Order #${data.order_id} placed. Total ₹${data.total}.`;
+    msg.className = 'msg ok';
+    setTimeout(() => { dlg.close(); load(); }, 1400);
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.className = 'msg err';
+  }
+};
+
+async function whoami() {
+  try {
+    const res = await fetch(API + '/api/whoami');
+    const d = await res.json();
+    document.getElementById('instance').textContent = d.instance;
+  } catch { document.getElementById('instance').textContent = 'unreachable'; }
+}
+
+async function genres() {
+  try {
+    const res = await fetch(API + '/api/books');
+    const all = await res.json();
+    const set = [...new Set(all.map(b => b.genre))].sort();
+    document.getElementById('genre').insertAdjacentHTML('beforeend',
+      set.map(g => `<option>${esc(g)}</option>`).join(''));
+  } catch {}
+}
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let t;
+document.getElementById('search').oninput = () => { clearTimeout(t); t = setTimeout(load, 300); };
+document.getElementById('genre').onchange = load;
+
+genres(); load(); whoami();
+</script>
+</body>
+</html>
